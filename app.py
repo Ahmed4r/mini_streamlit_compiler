@@ -165,24 +165,29 @@ class Parser:
 
 
 # ─────────────────────────────────────────────────────────────
-#  SESSION STATE
+#  SESSION STATE  (initialise before any widget)
 # ─────────────────────────────────────────────────────────────
-for key, default in [
-    ("tokens",     []),
-    ("results",    []),
-    ("syn_errors", []),
-    ("lex_errors", []),
-    ("analyzed",   False),
-]:
+defaults = {
+    "tokens":         [],
+    "results":        [],
+    "syn_errors":     [],
+    "lex_errors":     [],
+    "analyzed":       False,
+    "editor_content": SAMPLE_CODE,   # ← separate from widget key
+}
+for key, val in defaults.items():
     if key not in st.session_state:
-        st.session_state[key] = default
+        st.session_state[key] = val
 
 
 # ─────────────────────────────────────────────────────────────
 #  HEADER
 # ─────────────────────────────────────────────────────────────
 st.title("⬡  Mini Compiler")
-st.caption("CS 404 · Compiler Design · Pharos University in Alexandria  |  Dr. Alaa Radwan · Eng. Mayar Mohamed")
+st.caption(
+    "CS 404 · Compiler Design · Pharos University in Alexandria  |  "
+    "Dr. Alaa Radwan · Eng. Mayar Mohamed"
+)
 st.divider()
 
 
@@ -196,11 +201,11 @@ left, right = st.columns([1, 1.4], gap="large")
 with left:
     st.subheader("📝  Source Code")
 
+    # The widget uses `value` from our own state variable — no `key` needed
     source = st.text_area(
         label="Write your mini-language code here:",
-        value=SAMPLE_CODE,
+        value=st.session_state.editor_content,
         height=220,
-        key="source_input",
     )
 
     with st.expander("Token Types Legend"):
@@ -217,23 +222,27 @@ with left:
     with b3:
         clear_btn = st.button("✕  Clear", use_container_width=True)
 
+    # ── Button actions — update editor_content THEN rerun ──
     if sample_btn:
-        st.session_state["source_input"] = SAMPLE_CODE
+        st.session_state.editor_content = SAMPLE_CODE
         st.rerun()
 
     if clear_btn:
-        st.session_state["source_input"] = ""
-        st.session_state.analyzed        = False
-        st.session_state.tokens          = []
-        st.session_state.results         = []
-        st.session_state.syn_errors      = []
-        st.session_state.lex_errors      = []
+        st.session_state.editor_content = ""
+        st.session_state.analyzed       = False
+        st.session_state.tokens         = []
+        st.session_state.results        = []
+        st.session_state.syn_errors     = []
+        st.session_state.lex_errors     = []
         st.rerun()
 
     if run:
         if not source.strip():
             st.warning("Please enter some source code first.")
         else:
+            # Save current editor text so it survives the rerun
+            st.session_state.editor_content = source
+
             lexer   = Lexer(source)
             tokens  = lexer.tokenize()
             parser  = Parser(tokens)
@@ -246,7 +255,7 @@ with left:
             st.session_state.analyzed   = True
             st.rerun()
 
-    # ── Metrics after analysis ──
+    # ── Metrics ──
     if st.session_state.analyzed:
         st.divider()
         total_errors = len(st.session_state.syn_errors) + len(st.session_state.lex_errors)
@@ -266,7 +275,6 @@ with left:
 with right:
     if not st.session_state.analyzed:
         st.info("Run the analysis to see results here.")
-
     else:
         tokens     = st.session_state.tokens
         results    = st.session_state.results
